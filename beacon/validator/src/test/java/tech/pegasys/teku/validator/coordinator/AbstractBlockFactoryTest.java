@@ -196,10 +196,17 @@ public abstract class AbstractBlockFactoryTest {
     when(voluntaryExitPool.getItemsForBlock(any(), any(), any())).thenReturn(voluntaryExits);
     when(blsToExecutionChangePool.getItemsForBlock(any())).thenReturn(blsToExecutionChanges);
     when(eth1DataCache.getEth1Vote(any())).thenReturn(ETH1_DATA);
-    when(forkChoiceNotifier.getPayloadId(any(), any()))
-        .thenReturn(
-            SafeFuture.completedFuture(
-                Optional.of(dataStructureUtil.randomPayloadExecutionContext(false))));
+    if (blinded) {
+      when(forkChoiceNotifier.getPayloadId(any(), any()))
+          .thenReturn(
+              SafeFuture.completedFuture(
+                  Optional.of(dataStructureUtil.randomPayloadExecutionContext(false, true))));
+    } else {
+      when(forkChoiceNotifier.getPayloadId(any(), any()))
+          .thenReturn(
+              SafeFuture.completedFuture(
+                  Optional.of(dataStructureUtil.randomPayloadExecutionContext(false))));
+    }
 
     final BLSSignature randaoReveal = dataStructureUtil.randomSignature();
     final Bytes32 bestBlockRoot = recentChainData.getBestBlockRoot().orElseThrow();
@@ -237,7 +244,6 @@ public abstract class AbstractBlockFactoryTest {
                 newSlot,
                 randaoReveal,
                 Optional.empty(),
-                Optional.of(blinded),
                 Optional.empty(),
                 BlockProductionPerformance.NOOP));
 
@@ -371,8 +377,7 @@ public abstract class AbstractBlockFactoryTest {
     when(executionLayer.getCachedUnblindedPayload(signedBlockContainer.getSlot()))
         .thenReturn(builderPayload.map(BuilderPayloadOrFallbackData::create));
 
-    final List<BlobSidecar> blobSidecars =
-        blockFactory.createBlobSidecars(signedBlockContainer, BlockPublishingPerformance.NOOP);
+    final List<BlobSidecar> blobSidecars = blockFactory.createBlobSidecars(signedBlockContainer);
 
     return new BlockAndBlobSidecars(signedBlockContainer, blobSidecars);
   }

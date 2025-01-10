@@ -13,12 +13,13 @@
 
 package tech.pegasys.teku.reference.common.operations;
 
+import java.util.List;
 import java.util.Optional;
 import tech.pegasys.teku.spec.datastructures.blocks.BeaconBlockSummary;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.BeaconBlockBody;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.altair.SyncAggregate;
-import tech.pegasys.teku.spec.datastructures.consolidations.SignedConsolidation;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayloadSummary;
+import tech.pegasys.teku.spec.datastructures.execution.versions.electra.ConsolidationRequest;
 import tech.pegasys.teku.spec.datastructures.execution.versions.electra.DepositRequest;
 import tech.pegasys.teku.spec.datastructures.execution.versions.electra.WithdrawalRequest;
 import tech.pegasys.teku.spec.datastructures.operations.Attestation;
@@ -66,12 +67,13 @@ public interface OperationProcessor {
   void processWithdrawals(MutableBeaconState state, ExecutionPayloadSummary payloadSummary)
       throws BlockProcessingException;
 
-  void processDepositRequest(MutableBeaconState state, DepositRequest depositRequest)
+  void processDepositRequest(MutableBeaconState state, List<DepositRequest> depositRequest)
       throws BlockProcessingException;
 
-  void processWithdrawalRequest(MutableBeaconState state, WithdrawalRequest withdrawalRequest)
+  void processWithdrawalRequest(MutableBeaconState state, List<WithdrawalRequest> withdrawalRequest)
       throws BlockProcessingException;
 
-  void processConsolidation(MutableBeaconState state, SignedConsolidation consolidation)
+  void processConsolidationRequests(
+      MutableBeaconState state, List<ConsolidationRequest> consolidationRequest)
       throws BlockProcessingException;
 }

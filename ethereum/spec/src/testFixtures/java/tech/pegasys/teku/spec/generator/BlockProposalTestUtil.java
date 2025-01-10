@@ -128,8 +128,8 @@ public class BlockProposalTestUtil {
                 builder.blobKzgCommitments(
                     kzgCommitments.orElseGet(dataStructureUtil::emptyBlobKzgCommitments));
               }
-              if (builder.supportsConsolidations()) {
-                builder.consolidations(dataStructureUtil.emptyConsolidations());
+              if (builder.supportsExecutionRequests()) {
+                builder.executionRequests(dataStructureUtil.randomExecutionRequests());
               }
               return SafeFuture.COMPLETE;
             },
@@ -204,8 +204,8 @@ public class BlockProposalTestUtil {
                 builder.blobKzgCommitments(
                     kzgCommitments.orElseGet(dataStructureUtil::emptyBlobKzgCommitments));
               }
-              if (builder.supportsConsolidations()) {
-                builder.consolidations(dataStructureUtil.emptyConsolidations());
+              if (builder.supportsExecutionRequests()) {
+                builder.executionRequests(dataStructureUtil.randomExecutionRequests());
               }
               return SafeFuture.COMPLETE;
             })
@@ -272,10 +272,7 @@ public class BlockProposalTestUtil {
                 .transactions(transactions.orElse(Collections.emptyList()))
                 .withdrawals(List::of)
                 .blobGasUsed(() -> UInt64.ZERO)
-                .excessBlobGas(() -> UInt64.ZERO)
-                .depositRequests(List::of)
-                .withdrawalRequests(List::of)
-                .consolidationRequests(List::of));
+                .excessBlobGas(() -> UInt64.ZERO));
   }
 
   private Boolean isMergeTransitionComplete(final BeaconState state) {

@@ -52,7 +52,6 @@ public class BlockFactoryPhase0 implements BlockFactory {
       final UInt64 proposalSlot,
       final BLSSignature randaoReveal,
       final Optional<Bytes32> optionalGraffiti,
-      final Optional<Boolean> requestedBlinded,
       final Optional<UInt64> requestedBuilderBoostFactor,
       final BlockProductionPerformance blockProductionPerformance) {
     checkArgument(
@@ -76,7 +75,6 @@ public class BlockFactoryPhase0 implements BlockFactory {
                 blockSlotState,
                 randaoReveal,
                 optionalGraffiti,
-                requestedBlinded,
                 requestedBuilderBoostFactor,
                 blockProductionPerformance),
             blockProductionPerformance)
@@ -106,9 +104,7 @@ public class BlockFactoryPhase0 implements BlockFactory {
   }
 
   @Override
-  public List<BlobSidecar> createBlobSidecars(
-      final SignedBlockContainer blockContainer,
-      final BlockPublishingPerformance blockPublishingPerformance) {
+  public List<BlobSidecar> createBlobSidecars(final SignedBlockContainer blockContainer) {
     return Collections.emptyList();
   }
 }

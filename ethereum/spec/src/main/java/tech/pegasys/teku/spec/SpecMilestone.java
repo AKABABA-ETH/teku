@@ -13,6 +13,7 @@
 
 package tech.pegasys.teku.spec;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.Arrays;
@@ -46,13 +47,30 @@ public enum SpecMilestone {
     return compareTo(other) >= 0;
   }
 
+  public boolean isGreaterThan(final SpecMilestone other) {
+    return compareTo(other) > 0;
+  }
+
+  public boolean isLessThanOrEqualTo(final SpecMilestone other) {
+    return compareTo(other) <= 0;
+  }
+
   /** Returns the milestone prior to this milestone */
+  @SuppressWarnings("EnumOrdinal")
   public SpecMilestone getPreviousMilestone() {
-    if (equals(PHASE0)) {
-      throw new IllegalArgumentException("There is no milestone prior to Phase0");
+    checkArgument(!equals(PHASE0), "There is no milestone prior to Phase0");
+    final SpecMilestone[] values = SpecMilestone.values();
+    return values[ordinal() - 1];
+  }
+
+  /** Returns the milestone prior to this milestone */
+  @SuppressWarnings("EnumOrdinal")
+  public Optional<SpecMilestone> getPreviousMilestoneIfExists() {
+    if (this.equals(PHASE0)) {
+      return Optional.empty();
     }
-    final List<SpecMilestone> priorMilestones = getAllPriorMilestones(this);
-    return priorMilestones.get(priorMilestones.size() - 1);
+    final SpecMilestone[] values = SpecMilestone.values();
+    return Optional.of(values[ordinal() - 1]);
   }
 
   /**
@@ -108,9 +126,8 @@ public enum SpecMilestone {
     return switch (milestone) {
       case PHASE0 -> Optional.of(specConfig.getGenesisForkVersion());
       case ALTAIR -> specConfig.toVersionAltair().map(SpecConfigAltair::getAltairForkVersion);
-      case BELLATRIX -> specConfig
-          .toVersionBellatrix()
-          .map(SpecConfigBellatrix::getBellatrixForkVersion);
+      case BELLATRIX ->
+          specConfig.toVersionBellatrix().map(SpecConfigBellatrix::getBellatrixForkVersion);
       case CAPELLA -> specConfig.toVersionCapella().map(SpecConfigCapella::getCapellaForkVersion);
       case DENEB -> specConfig.toVersionDeneb().map(SpecConfigDeneb::getDenebForkVersion);
       case ELECTRA -> specConfig.toVersionElectra().map(SpecConfigElectra::getElectraForkVersion);
@@ -120,13 +137,12 @@ public enum SpecMilestone {
   static Optional<UInt64> getForkEpoch(final SpecConfig specConfig, final SpecMilestone milestone) {
     return switch (milestone) {
       case PHASE0 ->
-      // Phase0 can only ever start at epoch 0 - no non-zero slot is valid. However, another fork
-      // may also be configured to start at epoch 0, effectively overriding phase0
-      Optional.of(UInt64.ZERO);
+          // Phase0 can only ever start at epoch 0 - no non-zero slot is valid. However, another
+          // fork may also be configured to start at epoch 0, effectively overriding phase0
+          Optional.of(UInt64.ZERO);
       case ALTAIR -> specConfig.toVersionAltair().map(SpecConfigAltair::getAltairForkEpoch);
-      case BELLATRIX -> specConfig
-          .toVersionBellatrix()
-          .map(SpecConfigBellatrix::getBellatrixForkEpoch);
+      case BELLATRIX ->
+          specConfig.toVersionBellatrix().map(SpecConfigBellatrix::getBellatrixForkEpoch);
       case CAPELLA -> specConfig.toVersionCapella().map(SpecConfigCapella::getCapellaForkEpoch);
       case DENEB -> specConfig.toVersionDeneb().map(SpecConfigDeneb::getDenebForkEpoch);
       case ELECTRA -> specConfig.toVersionElectra().map(SpecConfigElectra::getElectraForkEpoch);

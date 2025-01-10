@@ -13,7 +13,12 @@
 
 package tech.pegasys.teku.cli.options;
 
-import static tech.pegasys.teku.infrastructure.logging.StatusLogger.STATUS_LOG;
+import static tech.pegasys.teku.infrastructure.async.AsyncRunnerFactory.DEFAULT_MAX_QUEUE_SIZE_ALL_SUBNETS;
+import static tech.pegasys.teku.networking.p2p.discovery.DiscoveryConfig.DEFAULT_P2P_PEERS_LOWER_BOUND;
+import static tech.pegasys.teku.networking.p2p.discovery.DiscoveryConfig.DEFAULT_P2P_PEERS_LOWER_BOUND_ALL_SUBNETS;
+import static tech.pegasys.teku.networking.p2p.discovery.DiscoveryConfig.DEFAULT_P2P_PEERS_UPPER_BOUND;
+import static tech.pegasys.teku.networking.p2p.discovery.DiscoveryConfig.DEFAULT_P2P_PEERS_UPPER_BOUND_ALL_SUBNETS;
+import static tech.pegasys.teku.validator.api.ValidatorConfig.DEFAULT_EXECUTOR_MAX_QUEUE_SIZE_ALL_SUBNETS;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,9 +28,11 @@ import picocli.CommandLine.Help.Visibility;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import tech.pegasys.teku.beacon.sync.SyncConfig;
+import tech.pegasys.teku.cli.converter.OptionalIntConverter;
 import tech.pegasys.teku.config.TekuConfiguration;
 import tech.pegasys.teku.networking.eth2.P2PConfig;
 import tech.pegasys.teku.networking.p2p.discovery.DiscoveryConfig;
+import tech.pegasys.teku.networking.p2p.gossip.config.GossipConfig;
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress;
 import tech.pegasys.teku.networking.p2p.network.config.NetworkConfig;
 
@@ -43,9 +50,12 @@ public class P2POptions {
   private boolean p2pEnabled = true;
 
   @Option(
-      names = {"--p2p-interface"},
+      names = {"--p2p-interface", "--p2p-interfaces"},
       paramLabel = "<NETWORK>",
-      description = "P2P network interface",
+      description =
+          """
+              The network interface(s) on which the node listens for P2P communication.
+              You can define up to 2 interfaces, with one being IPv4 and the other IPv6. (Default: 0.0.0.0)""",
       split = ",",
       arity = "1..2")
   private List<String> p2pInterfaces = NetworkConfig.DEFAULT_P2P_INTERFACE;
@@ -58,11 +68,9 @@ public class P2POptions {
   private int p2pPort = NetworkConfig.DEFAULT_P2P_PORT;
 
   @Option(
-      names = {"--Xp2p-port-ipv6"},
+      names = {"--p2p-port-ipv6"},
       paramLabel = "<INTEGER>",
-      description =
-          "P2P IPv6 port. This port is only used when listening over both IPv4 and IPv6. If listening over only IPv6, the value of --p2p-port will be used.",
-      hidden = true,
+      description = "P2P IPv6 port. This port is only used when listening over both IPv4 and IPv6.",
       arity = "1")
   private int p2pPortIpv6 = NetworkConfig.DEFAULT_P2P_PORT_IPV6;
 
@@ -72,6 +80,14 @@ public class P2POptions {
       description = "UDP port used for discovery. The default is the port specified in --p2p-port",
       arity = "1")
   private Integer p2pUdpPort;
+
+  @Option(
+      names = {"--p2p-udp-port-ipv6"},
+      paramLabel = "<INTEGER>",
+      description =
+          "IPv6 UDP port used for discovery. This port is only used when listening over both IPv4 and IPv6. The default is the port specified in --p2p-port-ipv6",
+      arity = "1")
+  private Integer p2pUdpPortIpv6;
 
   @Option(
       names = {"--p2p-discovery-enabled"},
@@ -91,9 +107,10 @@ public class P2POptions {
   private List<String> p2pDiscoveryBootnodes = null;
 
   @Option(
-      names = {"--p2p-advertised-ip"},
+      names = {"--p2p-advertised-ip", "--p2p-advertised-ips"},
       paramLabel = "<NETWORK>",
-      description = "P2P advertised IP (Default: 127.0.0.1)",
+      description =
+          "P2P advertised IP address(es). You can define up to 2 addresses, with one being IPv4 and the other IPv6. (Default: 127.0.0.1)",
       split = ",",
       arity = "1..2")
   private List<String> p2pAdvertisedIps;
@@ -106,13 +123,12 @@ public class P2POptions {
   private Integer p2pAdvertisedPort;
 
   @Option(
-      names = {"--Xp2p-advertised-port-ipv6"},
+      names = {"--p2p-advertised-port-ipv6"},
       paramLabel = "<INTEGER>",
       description =
           """
-             P2P advertised IPv6 port. The default is the port specified in --Xp2p-port-ipv6. This port is only used when advertising both IPv4 and IPv6 addresses.
-             If advertising only an IPv6 address, the value of ---p2p-advertised-port will be used.""",
-      hidden = true,
+              P2P advertised IPv6 port. This port is only used when advertising both IPv4 and IPv6 addresses.
+              The default is the port specified in --p2p-port-ipv6.""",
       arity = "1")
   private Integer p2pAdvertisedPortIpv6;
 
@@ -123,6 +139,16 @@ public class P2POptions {
           "Advertised UDP port to external peers. The default is the port specified in --p2p-advertised-port",
       arity = "1")
   private Integer p2pAdvertisedUdpPort;
+
+  @Option(
+      names = {"--p2p-advertised-udp-port-ipv6"},
+      paramLabel = "<INTEGER>",
+      description =
+          """
+              Advertised IPv6 UDP port to external peers. This port is only used when advertising both IPv4 and IPv6 addresses.
+              The default is the port specified in --p2p-advertised-port-ipv6.""",
+      arity = "1")
+  private Integer p2pAdvertisedUdpPortIpv6;
 
   @Option(
       names = {"--p2p-private-key-file"},
@@ -136,15 +162,17 @@ public class P2POptions {
       names = {"--p2p-peer-lower-bound"},
       paramLabel = "<INTEGER>",
       description = "Lower bound on the target number of peers",
+      converter = OptionalIntConverter.class,
       arity = "1")
-  private int p2pLowerBound = DiscoveryConfig.DEFAULT_P2P_PEERS_LOWER_BOUND;
+  private OptionalInt p2pLowerBound = OptionalInt.empty();
 
   @Option(
       names = {"--p2p-peer-upper-bound"},
       paramLabel = "<INTEGER>",
       description = "Upper bound on the target number of peers",
+      converter = OptionalIntConverter.class,
       arity = "1")
-  private int p2pUpperBound = DiscoveryConfig.DEFAULT_P2P_PEERS_UPPER_BOUND;
+  private OptionalInt p2pUpperBound = OptionalInt.empty();
 
   @Option(
       names = {"--Xp2p-target-subnet-subscriber-count"},
@@ -264,6 +292,17 @@ public class P2POptions {
   private Integer peerRateLimit = P2PConfig.DEFAULT_PEER_RATE_LIMIT;
 
   @Option(
+      names = {"--Xp2p-gossip-blobs-after-block-enabled"},
+      paramLabel = "<BOOLEAN>",
+      showDefaultValue = Visibility.ALWAYS,
+      description =
+          "Enables experimental behaviour in which blobs are gossiped after the block has been gossiped to at least one peer.",
+      hidden = true,
+      arity = "0..1",
+      fallbackValue = "true")
+  private boolean gossipBlobsAfterBlockEnabled = P2PConfig.DEFAULT_GOSSIP_BLOBS_AFTER_BLOCK_ENABLED;
+
+  @Option(
       names = {"--Xpeer-all-topics-filter-enabled"},
       paramLabel = "<BOOLEAN>",
       showDefaultValue = Visibility.ALWAYS,
@@ -295,8 +334,9 @@ public class P2POptions {
       paramLabel = "<NUMBER>",
       description = "Maximum queue size for pending aggregated signature verification",
       arity = "1",
+      converter = OptionalIntConverter.class,
       hidden = true)
-  private int batchVerifyQueueCapacity = P2PConfig.DEFAULT_BATCH_VERIFY_QUEUE_CAPACITY;
+  private OptionalInt batchVerifyQueueCapacity = OptionalInt.empty();
 
   @Option(
       names = {"--Xp2p-batch-verify-signatures-max-batch-size"},
@@ -338,22 +378,31 @@ public class P2POptions {
       fallbackValue = "true")
   private boolean yamuxEnabled = NetworkConfig.DEFAULT_YAMUX_ENABLED;
 
-  private int getP2pLowerBound() {
-    if (p2pLowerBound > p2pUpperBound) {
-      STATUS_LOG.adjustingP2pLowerBoundToUpperBound(p2pUpperBound);
-      return p2pUpperBound;
-    } else {
-      return p2pLowerBound;
+  // More about flood publishing
+  // https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#flood-publishing
+  @Option(
+      names = {"--Xp2p-flood-max-message-size-threshold"},
+      paramLabel = "<NUMBER>",
+      showDefaultValue = Visibility.ALWAYS,
+      description = "Maximum size (in bytes) of a message that will be flood published",
+      arity = "0..1",
+      hidden = true,
+      fallbackValue = "true")
+  private int floodPublishMaxMessageSizeThreshold =
+      GossipConfig.DEFAULT_FLOOD_PUBLISH_MAX_MESSAGE_SIZE_THRESHOLD;
+
+  private OptionalInt getP2pLowerBound() {
+    if (p2pUpperBound.isPresent() && p2pLowerBound.isPresent()) {
+      return p2pLowerBound.getAsInt() < p2pUpperBound.getAsInt() ? p2pLowerBound : p2pUpperBound;
     }
+    return p2pLowerBound;
   }
 
-  private int getP2pUpperBound() {
-    if (p2pUpperBound < p2pLowerBound) {
-      STATUS_LOG.adjustingP2pUpperBoundToLowerBound(p2pLowerBound);
-      return p2pLowerBound;
-    } else {
-      return p2pUpperBound;
+  private OptionalInt getP2pUpperBound() {
+    if (p2pUpperBound.isPresent() && p2pLowerBound.isPresent()) {
+      return p2pLowerBound.getAsInt() > p2pUpperBound.getAsInt() ? p2pLowerBound : p2pUpperBound;
     }
+    return p2pUpperBound;
   }
 
   public void configure(final TekuConfiguration.Builder builder) {
@@ -362,17 +411,20 @@ public class P2POptions {
 
     builder
         .p2p(
-            b ->
-                b.subscribeAllSubnetsEnabled(subscribeAllSubnetsEnabled)
-                    .batchVerifyMaxThreads(batchVerifyMaxThreads)
-                    .batchVerifyQueueCapacity(batchVerifyQueueCapacity)
-                    .batchVerifyMaxBatchSize(batchVerifyMaxBatchSize)
-                    .batchVerifyStrictThreadLimitEnabled(batchVerifyStrictThreadLimitEnabled)
-                    .targetSubnetSubscriberCount(p2pTargetSubnetSubscriberCount)
-                    .isGossipScoringEnabled(gossipScoringEnabled)
-                    .peerRateLimit(peerRateLimit)
-                    .allTopicsFilterEnabled(allTopicsFilterEnabled)
-                    .peerRequestLimit(peerRequestLimit))
+            b -> {
+              b.subscribeAllSubnetsEnabled(subscribeAllSubnetsEnabled)
+                  .batchVerifyMaxThreads(batchVerifyMaxThreads)
+                  .batchVerifyMaxBatchSize(batchVerifyMaxBatchSize)
+                  .batchVerifyStrictThreadLimitEnabled(batchVerifyStrictThreadLimitEnabled)
+                  .targetSubnetSubscriberCount(p2pTargetSubnetSubscriberCount)
+                  .isGossipScoringEnabled(gossipScoringEnabled)
+                  .peerRateLimit(peerRateLimit)
+                  .allTopicsFilterEnabled(allTopicsFilterEnabled)
+                  .peerRequestLimit(peerRequestLimit)
+                  .floodPublishMaxMessageSizeThreshold(floodPublishMaxMessageSizeThreshold)
+                  .gossipBlobsAfterBlockEnabled(gossipBlobsAfterBlockEnabled);
+              batchVerifyQueueCapacity.ifPresent(b::batchVerifyQueueCapacity);
+            })
         .discovery(
             d -> {
               if (p2pDiscoveryBootnodes != null) {
@@ -384,13 +436,29 @@ public class P2POptions {
               if (p2pUdpPort != null) {
                 d.listenUdpPort(p2pUdpPort);
               }
+              if (p2pUdpPortIpv6 != null) {
+                d.listenUdpPortIpv6(p2pUdpPortIpv6);
+              }
               if (p2pAdvertisedUdpPort != null) {
                 d.advertisedUdpPort(OptionalInt.of(p2pAdvertisedUdpPort));
               }
+              final OptionalInt maybeUpperBound = getP2pUpperBound();
+              final OptionalInt maybeLowerBound = getP2pLowerBound();
+              d.minPeers(
+                  maybeLowerBound.orElse(
+                      subscribeAllSubnetsEnabled
+                          ? DEFAULT_P2P_PEERS_LOWER_BOUND_ALL_SUBNETS
+                          : DEFAULT_P2P_PEERS_LOWER_BOUND));
+              d.maxPeers(
+                  maybeUpperBound.orElse(
+                      subscribeAllSubnetsEnabled
+                          ? DEFAULT_P2P_PEERS_UPPER_BOUND_ALL_SUBNETS
+                          : DEFAULT_P2P_PEERS_UPPER_BOUND));
+              if (p2pAdvertisedUdpPortIpv6 != null) {
+                d.advertisedUdpPortIpv6(OptionalInt.of(p2pAdvertisedPortIpv6));
+              }
               d.isDiscoveryEnabled(p2pDiscoveryEnabled)
                   .staticPeers(p2pStaticPeers)
-                  .minPeers(getP2pLowerBound())
-                  .maxPeers(getP2pUpperBound())
                   .siteLocalAddressesEnabled(siteLocalAddressesEnabled);
             })
         .network(
@@ -425,6 +493,17 @@ public class P2POptions {
                     .forwardSyncMaxBlocksPerMinute(forwardSyncRateLimit)
                     .forwardSyncBatchSize(forwardSyncBatchSize)
                     .forwardSyncMaxPendingBatches(forwardSyncMaxPendingBatches));
+
+    if (subscribeAllSubnetsEnabled) {
+      builder
+          .validator(
+              v -> v.executorMaxQueueSizeIfDefault(DEFAULT_EXECUTOR_MAX_QUEUE_SIZE_ALL_SUBNETS))
+          .eth2NetworkConfig(
+              eth ->
+                  eth.asyncP2pMaxQueueIfDefault(DEFAULT_MAX_QUEUE_SIZE_ALL_SUBNETS)
+                      .asyncBeaconChainMaxQueueIfDefault(DEFAULT_MAX_QUEUE_SIZE_ALL_SUBNETS))
+          .p2p(p2p -> p2p.batchVerifyQueueCapacityIfDefault(DEFAULT_MAX_QUEUE_SIZE_ALL_SUBNETS));
+    }
     natOptions.configure(builder);
   }
 }

@@ -187,9 +187,10 @@ public class SszTestExecutor<T extends SszData> implements TestExecutor {
 
           // Electra types
           .put(
-              "ssz_static/Consolidation",
+              "ssz_static/ExecutionRequests",
               new SszTestExecutor<>(
-                  schemas -> SchemaDefinitionsElectra.required(schemas).getConsolidationSchema()))
+                  schemas ->
+                      SchemaDefinitionsElectra.required(schemas).getExecutionRequestsSchema()))
           .put(
               "ssz_static/DepositRequest",
               new SszTestExecutor<>(
@@ -200,10 +201,14 @@ public class SszTestExecutor<T extends SszData> implements TestExecutor {
                   schemas ->
                       SchemaDefinitionsElectra.required(schemas).getWithdrawalRequestSchema()))
           .put(
-              "ssz_static/PendingBalanceDeposit",
+              "ssz_static/ConsolidationRequest",
               new SszTestExecutor<>(
                   schemas ->
-                      SchemaDefinitionsElectra.required(schemas).getPendingBalanceDepositSchema()))
+                      SchemaDefinitionsElectra.required(schemas).getConsolidationRequestSchema()))
+          .put(
+              "ssz_static/PendingDeposit",
+              new SszTestExecutor<>(
+                  schemas -> SchemaDefinitionsElectra.required(schemas).getPendingDepositSchema()))
           .put(
               "ssz_static/PendingConsolidation",
               new SszTestExecutor<>(
@@ -216,10 +221,10 @@ public class SszTestExecutor<T extends SszData> implements TestExecutor {
                       SchemaDefinitionsElectra.required(schemas)
                           .getPendingPartialWithdrawalSchema()))
           .put(
-              "ssz_static/SignedConsolidation",
+              "ssz_static/SingleAttestation",
               new SszTestExecutor<>(
                   schemas ->
-                      SchemaDefinitionsElectra.required(schemas).getSignedConsolidationSchema()))
+                      SchemaDefinitionsElectra.required(schemas).getSingleAttestationSchema()))
 
           // Legacy Schemas (Not yet migrated to SchemaDefinitions)
           .put(

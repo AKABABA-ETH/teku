@@ -24,9 +24,9 @@ import tech.pegasys.teku.infrastructure.ssz.tree.TreeNode;
 import tech.pegasys.teku.spec.datastructures.blocks.Eth1Data;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.BeaconBlockBody;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.altair.SyncAggregate;
-import tech.pegasys.teku.spec.datastructures.consolidations.SignedConsolidation;
-import tech.pegasys.teku.spec.datastructures.execution.versions.electra.ExecutionPayloadElectra;
-import tech.pegasys.teku.spec.datastructures.execution.versions.electra.ExecutionPayloadElectraImpl;
+import tech.pegasys.teku.spec.datastructures.execution.versions.deneb.ExecutionPayloadDeneb;
+import tech.pegasys.teku.spec.datastructures.execution.versions.deneb.ExecutionPayloadDenebImpl;
+import tech.pegasys.teku.spec.datastructures.execution.versions.electra.ExecutionRequests;
 import tech.pegasys.teku.spec.datastructures.operations.Attestation;
 import tech.pegasys.teku.spec.datastructures.operations.AttesterSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.Deposit;
@@ -48,10 +48,10 @@ public class BeaconBlockBodyElectraImpl
         SszList<Deposit>,
         SszList<SignedVoluntaryExit>,
         SyncAggregate,
-        ExecutionPayloadElectraImpl,
+        ExecutionPayloadDenebImpl,
         SszList<SignedBlsToExecutionChange>,
         SszList<SszKZGCommitment>,
-        SszList<SignedConsolidation>>
+        ExecutionRequests>
     implements BeaconBlockBodyElectra {
 
   BeaconBlockBodyElectraImpl(
@@ -65,10 +65,10 @@ public class BeaconBlockBodyElectraImpl
       final SszList<Deposit> deposits,
       final SszList<SignedVoluntaryExit> voluntaryExits,
       final SyncAggregate syncAggregate,
-      final ExecutionPayloadElectraImpl executionPayload,
+      final ExecutionPayloadDenebImpl executionPayload,
       final SszList<SignedBlsToExecutionChange> blsToExecutionChanges,
       final SszList<SszKZGCommitment> blobKzgCommitments,
-      final SszList<SignedConsolidation> consolidations) {
+      final ExecutionRequests executionRequests) {
     super(
         type,
         randaoReveal,
@@ -83,7 +83,7 @@ public class BeaconBlockBodyElectraImpl
         executionPayload,
         blsToExecutionChanges,
         blobKzgCommitments,
-        consolidations);
+        executionRequests);
   }
 
   BeaconBlockBodyElectraImpl(final BeaconBlockBodySchemaElectraImpl type) {
@@ -159,7 +159,7 @@ public class BeaconBlockBodyElectraImpl
   }
 
   @Override
-  public ExecutionPayloadElectra getExecutionPayload() {
+  public ExecutionPayloadDeneb getExecutionPayload() {
     return getField9();
   }
 
@@ -174,7 +174,7 @@ public class BeaconBlockBodyElectraImpl
   }
 
   @Override
-  public SszList<SignedConsolidation> getConsolidations() {
+  public ExecutionRequests getExecutionRequests() {
     return getField12();
   }
 

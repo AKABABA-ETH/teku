@@ -28,6 +28,7 @@ import tech.pegasys.teku.spec.Spec;
 import tech.pegasys.teku.spec.SpecFactory;
 import tech.pegasys.teku.spec.SpecMilestone;
 import tech.pegasys.teku.spec.config.SpecConfig;
+import tech.pegasys.teku.spec.config.SpecConfigAndParent;
 import tech.pegasys.teku.spec.config.SpecConfigLoader;
 import tech.pegasys.teku.spec.datastructures.blocks.SignedBeaconBlock;
 import tech.pegasys.teku.spec.datastructures.state.beaconstate.BeaconState;
@@ -47,35 +48,40 @@ public class TransitionTestExecutor implements TestExecutor {
   private void processUpgrade(final TestDefinition testDefinition, final MetaData metadata) {
     final SpecMilestone milestone = SpecMilestone.forName(metadata.postFork);
     final UInt64 forkEpoch = UInt64.valueOf(metadata.forkEpoch);
-    final SpecConfig config =
+    final SpecConfigAndParent<? extends SpecConfig> config =
         SpecConfigLoader.loadConfig(
             testDefinition.getConfigName(),
             builder -> {
               switch (milestone) {
                 case ALTAIR -> builder.altairBuilder(a -> a.altairForkEpoch(forkEpoch));
-                case BELLATRIX -> builder
-                    .altairBuilder(a -> a.altairForkEpoch(UInt64.ZERO))
-                    .bellatrixBuilder(b -> b.bellatrixForkEpoch(forkEpoch));
-                case CAPELLA -> builder
-                    .altairBuilder(a -> a.altairForkEpoch(UInt64.ZERO))
-                    .bellatrixBuilder(b -> b.bellatrixForkEpoch(UInt64.ZERO))
-                    .capellaBuilder(c -> c.capellaForkEpoch(forkEpoch));
-                case DENEB -> builder
-                    .altairBuilder(a -> a.altairForkEpoch(UInt64.ZERO))
-                    .bellatrixBuilder(b -> b.bellatrixForkEpoch(UInt64.ZERO))
-                    .capellaBuilder(c -> c.capellaForkEpoch(UInt64.ZERO))
-                    .denebBuilder(d -> d.denebForkEpoch(forkEpoch));
-                case ELECTRA -> builder
-                    .altairBuilder(a -> a.altairForkEpoch(UInt64.ZERO))
-                    .bellatrixBuilder(b -> b.bellatrixForkEpoch(UInt64.ZERO))
-                    .capellaBuilder(c -> c.capellaForkEpoch(UInt64.ZERO))
-                    .denebBuilder(d -> d.denebForkEpoch(UInt64.ZERO))
-                    .electraBuilder(e -> e.electraForkEpoch(forkEpoch));
-                default -> throw new IllegalStateException(
-                    "Unhandled fork transition for test "
-                        + testDefinition.getDisplayName()
-                        + ": "
-                        + milestone);
+                case BELLATRIX ->
+                    builder
+                        .altairBuilder(a -> a.altairForkEpoch(UInt64.ZERO))
+                        .bellatrixBuilder(b -> b.bellatrixForkEpoch(forkEpoch));
+                case CAPELLA ->
+                    builder
+                        .altairBuilder(a -> a.altairForkEpoch(UInt64.ZERO))
+                        .bellatrixBuilder(b -> b.bellatrixForkEpoch(UInt64.ZERO))
+                        .capellaBuilder(c -> c.capellaForkEpoch(forkEpoch));
+                case DENEB ->
+                    builder
+                        .altairBuilder(a -> a.altairForkEpoch(UInt64.ZERO))
+                        .bellatrixBuilder(b -> b.bellatrixForkEpoch(UInt64.ZERO))
+                        .capellaBuilder(c -> c.capellaForkEpoch(UInt64.ZERO))
+                        .denebBuilder(d -> d.denebForkEpoch(forkEpoch));
+                case ELECTRA ->
+                    builder
+                        .altairBuilder(a -> a.altairForkEpoch(UInt64.ZERO))
+                        .bellatrixBuilder(b -> b.bellatrixForkEpoch(UInt64.ZERO))
+                        .capellaBuilder(c -> c.capellaForkEpoch(UInt64.ZERO))
+                        .denebBuilder(d -> d.denebForkEpoch(UInt64.ZERO))
+                        .electraBuilder(e -> e.electraForkEpoch(forkEpoch));
+                default ->
+                    throw new IllegalStateException(
+                        "Unhandled fork transition for test "
+                            + testDefinition.getDisplayName()
+                            + ": "
+                            + milestone);
               }
             });
     final Spec spec = SpecFactory.create(config);

@@ -25,9 +25,9 @@ import tech.pegasys.teku.spec.datastructures.blocks.blockbody.BeaconBlockBody;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.BeaconBlockBodyBuilder;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.BeaconBlockBodySchema;
 import tech.pegasys.teku.spec.datastructures.blocks.blockbody.versions.altair.SyncAggregate;
-import tech.pegasys.teku.spec.datastructures.consolidations.SignedConsolidation;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayload;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayloadHeader;
+import tech.pegasys.teku.spec.datastructures.execution.versions.electra.ExecutionRequests;
 import tech.pegasys.teku.spec.datastructures.operations.Attestation;
 import tech.pegasys.teku.spec.datastructures.operations.AttesterSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.Deposit;
@@ -137,8 +137,8 @@ public class BeaconBlockBodyBuilderPhase0 implements BeaconBlockBodyBuilder {
   }
 
   @Override
-  public BeaconBlockBodyBuilder consolidations(final SszList<SignedConsolidation> consolidations) {
-    // No consolidations in phase 0
+  public BeaconBlockBodyBuilder executionRequests(final ExecutionRequests executionRequests) {
+    // No ExecutionRequests in phase 0
     return this;
   }
 

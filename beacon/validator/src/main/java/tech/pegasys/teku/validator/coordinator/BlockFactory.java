@@ -34,13 +34,11 @@ public interface BlockFactory {
       UInt64 proposalSlot,
       BLSSignature randaoReveal,
       Optional<Bytes32> optionalGraffiti,
-      Optional<Boolean> requestedBlinded,
       Optional<UInt64> requestedBuilderBoostFactor,
       BlockProductionPerformance blockProductionPerformance);
 
   SafeFuture<SignedBeaconBlock> unblindSignedBlockIfBlinded(
       SignedBeaconBlock maybeBlindedBlock, BlockPublishingPerformance blockPublishingPerformance);
 
-  List<BlobSidecar> createBlobSidecars(
-      SignedBlockContainer blockContainer, BlockPublishingPerformance blockPublishingPerformance);
+  List<BlobSidecar> createBlobSidecars(SignedBlockContainer blockContainer);
 }

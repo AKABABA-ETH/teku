@@ -1,7 +1,7 @@
 {
   "title" : "BeaconBlockBodyElectra",
   "type" : "object",
-  "required" : [ "randao_reveal", "eth1_data", "graffiti", "proposer_slashings", "attester_slashings", "attestations", "deposits", "voluntary_exits", "sync_aggregate", "execution_payload", "bls_to_execution_changes", "blob_kzg_commitments", "consolidations" ],
+  "required" : [ "randao_reveal", "eth1_data", "graffiti", "proposer_slashings", "attester_slashings", "attestations", "deposits", "voluntary_exits", "sync_aggregate", "execution_payload", "bls_to_execution_changes", "blob_kzg_commitments", "execution_requests" ],
   "properties" : {
     "randao_reveal" : {
       "type" : "string",
@@ -27,7 +27,7 @@
     "attester_slashings" : {
       "type" : "array",
       "items" : {
-        "$ref" : "#/components/schemas/AttesterSlashing"
+        "$ref" : "#/components/schemas/AttesterSlashingElectra"
       }
     },
     "attestations" : {
@@ -52,7 +52,7 @@
       "$ref" : "#/components/schemas/SyncAggregate"
     },
     "execution_payload" : {
-      "$ref" : "#/components/schemas/ExecutionPayloadElectra"
+      "$ref" : "#/components/schemas/ExecutionPayloadDeneb"
     },
     "bls_to_execution_changes" : {
       "type" : "array",
@@ -69,11 +69,8 @@
         "format" : "bytes"
       }
     },
-    "consolidations" : {
-      "type" : "array",
-      "items" : {
-        "$ref" : "#/components/schemas/SignedConsolidation"
-      }
+    "execution_requests" : {
+      "$ref" : "#/components/schemas/ExecutionRequestsElectra"
     }
   }
 }

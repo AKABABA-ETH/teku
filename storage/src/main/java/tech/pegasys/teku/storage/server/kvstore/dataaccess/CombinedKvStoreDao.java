@@ -267,12 +267,20 @@ public class CombinedKvStoreDao<S extends SchemaCombined>
 
   @Override
   public Optional<UInt64> getEarliestFinalizedBlockSlot() {
-    return db.getFirstEntry(schema.getColumnFinalizedBlocksBySlot()).map(ColumnEntry::getKey);
+    return db.get(schema.getVariableEarliestBlockSlot())
+        .or(
+            () ->
+                db.getFirstEntry(schema.getColumnFinalizedBlocksBySlot()).map(ColumnEntry::getKey));
   }
 
   @Override
   public Optional<SignedBeaconBlock> getEarliestFinalizedBlock() {
     return db.getFirstEntry(schema.getColumnFinalizedBlocksBySlot()).map(ColumnEntry::getValue);
+  }
+
+  @Override
+  public Optional<UInt64> getEarliestFinalizedStateSlot() {
+    return stateStorageLogic.getEarliestAvailableFinalizedStateSlot(db, schema);
   }
 
   @Override
@@ -645,6 +653,16 @@ public class CombinedKvStoreDao<S extends SchemaCombined>
     }
 
     @Override
+    public void setEarliestBlockSlot(final UInt64 slot) {
+      transaction.put(schema.getVariableEarliestBlockSlot(), slot);
+    }
+
+    @Override
+    public void deleteEarliestBlockSlot() {
+      transaction.delete(schema.getVariableEarliestBlockSlot());
+    }
+
+    @Override
     public void commit() {
       // Commit db updates
       transaction.commit();
@@ -712,6 +730,11 @@ public class CombinedKvStoreDao<S extends SchemaCombined>
     }
 
     @Override
+    public void deleteFinalizedState(final UInt64 slot) {
+      stateStorageUpdater.deleteFinalizedState(transaction, schema, slot);
+    }
+
+    @Override
     public void addReconstructedFinalizedState(final Bytes32 blockRoot, final BeaconState state) {
       stateStorageUpdater.addReconstructedFinalizedState(db, transaction, schema, state);
     }
@@ -719,6 +742,11 @@ public class CombinedKvStoreDao<S extends SchemaCombined>
     @Override
     public void addFinalizedStateRoot(final Bytes32 stateRoot, final UInt64 slot) {
       transaction.put(schema.getColumnSlotsByFinalizedStateRoot(), stateRoot, slot);
+    }
+
+    @Override
+    public void deleteFinalizedStateRoot(final Bytes32 stateRoot) {
+      transaction.delete(schema.getColumnSlotsByFinalizedStateRoot(), stateRoot);
     }
 
     @Override

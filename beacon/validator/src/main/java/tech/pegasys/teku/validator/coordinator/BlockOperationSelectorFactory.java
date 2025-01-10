@@ -49,6 +49,7 @@ import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayload;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayloadContext;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayloadHeader;
 import tech.pegasys.teku.spec.datastructures.execution.ExecutionPayloadResult;
+import tech.pegasys.teku.spec.datastructures.execution.versions.electra.ExecutionRequests;
 import tech.pegasys.teku.spec.datastructures.operations.Attestation;
 import tech.pegasys.teku.spec.datastructures.operations.AttesterSlashing;
 import tech.pegasys.teku.spec.datastructures.operations.ProposerSlashing;
@@ -63,7 +64,6 @@ import tech.pegasys.teku.spec.logic.versions.deneb.helpers.MiscHelpersDeneb;
 import tech.pegasys.teku.spec.schemas.SchemaDefinitions;
 import tech.pegasys.teku.spec.schemas.SchemaDefinitionsBellatrix;
 import tech.pegasys.teku.spec.schemas.SchemaDefinitionsDeneb;
-import tech.pegasys.teku.spec.schemas.SchemaDefinitionsElectra;
 import tech.pegasys.teku.statetransition.OperationPool;
 import tech.pegasys.teku.statetransition.attestation.AggregatingAttestationPool;
 import tech.pegasys.teku.statetransition.attestation.AttestationForkChecker;
@@ -116,7 +116,6 @@ public class BlockOperationSelectorFactory {
       final BeaconState blockSlotState,
       final BLSSignature randaoReveal,
       final Optional<Bytes32> optionalGraffiti,
-      final Optional<Boolean> requestedBlinded,
       final Optional<UInt64> requestedBuilderBoostFactor,
       final BlockProductionPerformance blockProductionPerformance) {
 
@@ -177,15 +176,6 @@ public class BlockOperationSelectorFactory {
       final SchemaDefinitions schemaDefinitions =
           spec.atSlot(blockSlotState.getSlot()).getSchemaDefinitions();
 
-      // Post-Electra: Consolidations
-      if (bodyBuilder.supportsConsolidations()) {
-        // devnet-0 blocks are empty of consolidations, so just default their list.
-        bodyBuilder.consolidations(
-            SchemaDefinitionsElectra.required(schemaDefinitions)
-                .getConsolidationsSchema()
-                .createFromElements(List.of()));
-      }
-
       final SafeFuture<Void> blockProductionComplete;
 
       // In `setExecutionData` the following fields are set:
@@ -200,7 +190,6 @@ public class BlockOperationSelectorFactory {
                         setExecutionData(
                             executionPayloadContext,
                             bodyBuilder,
-                            requestedBlinded,
                             requestedBuilderBoostFactor,
                             SchemaDefinitionsBellatrix.required(schemaDefinitions),
                             blockSlotState,
@@ -218,7 +207,6 @@ public class BlockOperationSelectorFactory {
   private SafeFuture<Void> setExecutionData(
       final Optional<ExecutionPayloadContext> executionPayloadContext,
       final BeaconBlockBodyBuilder bodyBuilder,
-      final Optional<Boolean> requestedBlinded,
       final Optional<UInt64> requestedBuilderBoostFactor,
       final SchemaDefinitionsBellatrix schemaDefinitions,
       final BeaconState blockSlotState,
@@ -231,25 +219,17 @@ public class BlockOperationSelectorFactory {
               blockSlotState.getSlot()));
     }
 
-    // if requestedBlinded has been specified, we strictly follow it, otherwise we should run
-    // Builder flow (blinded) only if we have a validator registration
-    final boolean shouldTryBuilderFlow =
-        requestedBlinded.orElseGet(
-            () ->
-                executionPayloadContext
-                    .map(ExecutionPayloadContext::isValidatorRegistrationPresent)
-                    .orElse(false));
-
     // pre-Merge Execution Payload / Execution Payload Header
     if (executionPayloadContext.isEmpty()) {
-      if (shouldTryBuilderFlow) {
-        bodyBuilder.executionPayloadHeader(
-            schemaDefinitions.getExecutionPayloadHeaderSchema().getHeaderOfDefaultPayload());
-      } else {
-        bodyBuilder.executionPayload(schemaDefinitions.getExecutionPayloadSchema().getDefault());
-      }
+      bodyBuilder.executionPayload(schemaDefinitions.getExecutionPayloadSchema().getDefault());
       return SafeFuture.COMPLETE;
     }
+
+    // We should run Builder flow (blinded) only if we have a validator registration
+    final boolean shouldTryBuilderFlow =
+        executionPayloadContext
+            .map(ExecutionPayloadContext::isValidatorRegistrationPresent)
+            .orElse(false);
 
     final ExecutionPayloadResult executionPayloadResult =
         executionLayerBlockProductionManager.initiateBlockProduction(
@@ -261,9 +241,9 @@ public class BlockOperationSelectorFactory {
 
     return SafeFuture.allOf(
         cacheExecutionPayloadValue(executionPayloadResult, blockSlotState),
-        setPayloadOrPayloadHeader(
-            bodyBuilder, schemaDefinitions, requestedBlinded, executionPayloadResult),
-        setKzgCommitments(bodyBuilder, schemaDefinitions, executionPayloadResult));
+        setPayloadOrPayloadHeader(bodyBuilder, executionPayloadResult),
+        setKzgCommitments(bodyBuilder, schemaDefinitions, executionPayloadResult),
+        setExecutionRequests(bodyBuilder, executionPayloadResult));
   }
 
   private SafeFuture<Void> cacheExecutionPayloadValue(
@@ -278,8 +258,6 @@ public class BlockOperationSelectorFactory {
 
   private SafeFuture<Void> setPayloadOrPayloadHeader(
       final BeaconBlockBodyBuilder bodyBuilder,
-      final SchemaDefinitionsBellatrix schemaDefinitions,
-      final Optional<Boolean> requestedBlinded,
       final ExecutionPayloadResult executionPayloadResult) {
 
     if (executionPayloadResult.isFromLocalFlow()) {
@@ -297,8 +275,7 @@ public class BlockOperationSelectorFactory {
             builderBidOrFallbackData -> {
               // we should try to return unblinded content only if no explicit "blindness" has been
               // requested and builder flow fallbacks to local
-              if (requestedBlinded.isEmpty()
-                  && builderBidOrFallbackData.getFallbackData().isPresent()) {
+              if (builderBidOrFallbackData.getFallbackData().isPresent()) {
                 bodyBuilder.executionPayload(
                     builderBidOrFallbackData.getFallbackDataRequired().getExecutionPayload());
               } else {
@@ -308,16 +285,7 @@ public class BlockOperationSelectorFactory {
                         // from the builder bid
                         .map(BuilderBid::getHeader)
                         // from the local fallback
-                        .orElseGet(
-                            () -> {
-                              final ExecutionPayload executionPayload =
-                                  builderBidOrFallbackData
-                                      .getFallbackDataRequired()
-                                      .getExecutionPayload();
-                              return schemaDefinitions
-                                  .getExecutionPayloadHeaderSchema()
-                                  .createFromExecutionPayload(executionPayload);
-                            });
+                        .orElseThrow();
                 bodyBuilder.executionPayloadHeader(executionPayloadHeader);
               }
             });
@@ -370,6 +338,43 @@ public class BlockOperationSelectorFactory {
                     .getFallbackDataRequired()
                     .getBlobsBundle()
                     .map(blobKzgCommitmentsSchema::createFromBlobsBundle))
+        .orElseThrow();
+  }
+
+  private SafeFuture<Void> setExecutionRequests(
+      final BeaconBlockBodyBuilder bodyBuilder,
+      final ExecutionPayloadResult executionPayloadResult) {
+    if (!bodyBuilder.supportsExecutionRequests()) {
+      return SafeFuture.COMPLETE;
+    }
+    final SafeFuture<ExecutionRequests> executionRequests;
+    if (executionPayloadResult.isFromLocalFlow()) {
+      // local, non-blinded flow
+      executionRequests =
+          executionPayloadResult
+              .getExecutionRequestsFutureFromLocalFlow()
+              .orElseThrow()
+              .thenApply(Optional::orElseThrow);
+    } else {
+      // builder, blinded flow
+      executionRequests =
+          executionPayloadResult
+              .getBuilderBidOrFallbackDataFuture()
+              .orElseThrow()
+              .thenApply(this::getExecutionRequestsFromBuilderFlow);
+    }
+
+    return executionRequests.thenAccept(bodyBuilder::executionRequests);
+  }
+
+  private ExecutionRequests getExecutionRequestsFromBuilderFlow(
+      final BuilderBidOrFallbackData builderBidOrFallbackData) {
+    return builderBidOrFallbackData
+        .getBuilderBid()
+        // from the builder bid
+        .flatMap(BuilderBid::getOptionalExecutionRequests)
+        // from the local fallback
+        .or(() -> builderBidOrFallbackData.getFallbackDataRequired().getExecutionRequests())
         .orElseThrow();
   }
 
@@ -446,8 +451,7 @@ public class BlockOperationSelectorFactory {
     };
   }
 
-  public Function<SignedBlockContainer, List<BlobSidecar>> createBlobSidecarsSelector(
-      final BlockPublishingPerformance blockPublishingPerformance) {
+  public Function<SignedBlockContainer, List<BlobSidecar>> createBlobSidecarsSelector() {
     return blockContainer -> {
       final UInt64 slot = blockContainer.getSlot();
       final SignedBeaconBlock block = blockContainer.getSignedBlock();
@@ -500,17 +504,12 @@ public class BlockOperationSelectorFactory {
       final MiscHelpersDeneb miscHelpersDeneb =
           MiscHelpersDeneb.required(spec.atSlot(slot).miscHelpers());
 
-      final List<BlobSidecar> blobSidecars =
-          IntStream.range(0, blobs.size())
-              .mapToObj(
-                  index ->
-                      miscHelpersDeneb.constructBlobSidecar(
-                          block, UInt64.valueOf(index), blobs.get(index), proofs.get(index)))
-              .toList();
-
-      blockPublishingPerformance.blobSidecarsPrepared();
-
-      return blobSidecars;
+      return IntStream.range(0, blobs.size())
+          .mapToObj(
+              index ->
+                  miscHelpersDeneb.constructBlobSidecar(
+                      block, UInt64.valueOf(index), blobs.get(index), proofs.get(index)))
+          .toList();
     };
   }
 

@@ -54,6 +54,7 @@ import tech.pegasys.teku.spec.datastructures.execution.Transaction;
 import tech.pegasys.teku.spec.datastructures.execution.TransactionSchema;
 import tech.pegasys.teku.spec.datastructures.execution.versions.capella.Withdrawal;
 import tech.pegasys.teku.spec.datastructures.execution.versions.capella.WithdrawalSchema;
+import tech.pegasys.teku.spec.datastructures.execution.versions.electra.ConsolidationRequest;
 import tech.pegasys.teku.spec.datastructures.execution.versions.electra.ConsolidationRequestSchema;
 import tech.pegasys.teku.spec.datastructures.execution.versions.electra.DepositRequest;
 import tech.pegasys.teku.spec.datastructures.execution.versions.electra.DepositRequestSchema;
@@ -155,8 +156,14 @@ public class ExecutionPayloadSchemaDeneb
   }
 
   @Override
-  public ConsolidationRequestSchema getConsolidationSchemaRequired() {
+  public ConsolidationRequestSchema getConsolidationRequestSchemaRequired() {
     throw new IllegalStateException("Attempted to get a consolidation request schema from deneb");
+  }
+
+  @Override
+  public SszListSchema<ConsolidationRequest, ? extends SszList<ConsolidationRequest>>
+      getConsolidationRequestsSchemaRequired() {
+    throw new IllegalStateException("Attempted to get consolidation requests schema from deneb");
   }
 
   public WithdrawalSchema getWithdrawalSchema() {
@@ -195,5 +202,10 @@ public class ExecutionPayloadSchemaDeneb
   @SuppressWarnings("unchecked")
   public SszListSchema<Withdrawal, ?> getWithdrawalsSchema() {
     return (SszListSchema<Withdrawal, ?>) getChildSchema(getFieldIndex(WITHDRAWALS));
+  }
+
+  @Override
+  public ExecutionPayloadSchemaDeneb toVersionDenebRequired() {
+    return this;
   }
 }

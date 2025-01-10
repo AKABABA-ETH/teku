@@ -55,6 +55,8 @@ public class GetBlockAttestations extends RestApiEndpoint {
             .pathParam(PARAMETER_BLOCK_ID)
             .response(SC_OK, "Request successful", getResponseType(spec))
             .withNotFoundResponse()
+            .withChainDataResponses()
+            .deprecated(true)
             .build());
     this.chainDataProvider = chainDataProvider;
   }

@@ -75,7 +75,7 @@ import tech.pegasys.teku.spec.datastructures.forkchoice.ReadOnlyForkChoiceStrate
 import tech.pegasys.teku.spec.datastructures.operations.Attestation;
 import tech.pegasys.teku.spec.datastructures.operations.AttestationData;
 import tech.pegasys.teku.spec.datastructures.operations.AttestationSchema;
-import tech.pegasys.teku.spec.datastructures.operations.IndexedAttestation.IndexedAttestationSchema;
+import tech.pegasys.teku.spec.datastructures.operations.IndexedAttestationSchema;
 import tech.pegasys.teku.spec.datastructures.state.Checkpoint;
 import tech.pegasys.teku.spec.datastructures.util.AttestationProcessingResult;
 import tech.pegasys.teku.spec.executionlayer.ExecutionLayerChannelStub;
@@ -248,31 +248,6 @@ class ForkChoiceTest {
   }
 
   @Test
-  void onBlock_shouldFailIfBlobsAreInvalid() {
-    setupWithSpec(TestSpecFactory.createMinimalDeneb());
-    final SignedBlockAndState blockAndState = chainBuilder.generateBlockAtSlot(ONE);
-    storageSystem.chainUpdater().advanceCurrentSlotToAtLeast(blockAndState.getSlot());
-    final List<BlobSidecar> blobSidecars =
-        storageSystem
-            .chainStorage()
-            .getBlobSidecarsBySlotAndBlockRoot(blockAndState.getSlotAndBlockRoot())
-            .join();
-
-    when(blobSidecarsAvailabilityChecker.getAvailabilityCheckResult())
-        .thenReturn(
-            SafeFuture.completedFuture(
-                BlobSidecarsAndValidationResult.invalidResult(blobSidecars)));
-
-    importBlockAndAssertFailure(
-        blockAndState, FailureReason.FAILED_DATA_AVAILABILITY_CHECK_INVALID);
-
-    verify(blobSidecarManager).createAvailabilityChecker(blockAndState.getBlock());
-    verify(blobSidecarsAvailabilityChecker).initiateDataAvailabilityCheck();
-    verify(blobSidecarsAvailabilityChecker).getAvailabilityCheckResult();
-    verify(debugDataDumper).saveInvalidBlobSidecars(blobSidecars, blockAndState.getBlock());
-  }
-
-  @Test
   void onBlock_consensusValidationShouldNotResolveWhenDataAvailabilityFails() {
     setupWithSpec(TestSpecFactory.createMinimalDeneb());
     final SignedBlockAndState blockAndState = chainBuilder.generateBlockAtSlot(ONE);
@@ -313,8 +288,7 @@ class ForkChoiceTest {
   void onBlock_consensusValidationShouldNotResolveWhenEarlyFails() {
     setupWithSpec(TestSpecFactory.createMinimalDeneb());
     final List<SignedBlockAndState> signedBlockAndStates = chainBuilder.generateBlocksUpToSlot(2);
-    final SignedBlockAndState wrongBlockAndState =
-        signedBlockAndStates.get(signedBlockAndStates.size() - 1);
+    final SignedBlockAndState wrongBlockAndState = signedBlockAndStates.getLast();
 
     storageSystem.chainUpdater().advanceCurrentSlotToAtLeast(wrongBlockAndState.getSlot());
 
@@ -359,7 +333,7 @@ class ForkChoiceTest {
     // let's prepare a mocked EL with lazy newPayload
     executionLayer = mock(ExecutionLayerChannelStub.class);
     final SafeFuture<PayloadStatus> payloadStatusSafeFuture = new SafeFuture<>();
-    when(executionLayer.engineNewPayload(any())).thenReturn(payloadStatusSafeFuture);
+    when(executionLayer.engineNewPayload(any(), any())).thenReturn(payloadStatusSafeFuture);
 
     // let's import a valid consensus block
     final SafeFuture<BlockImportResult> importResult =
